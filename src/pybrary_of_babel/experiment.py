@@ -8,6 +8,7 @@ from joblib import Parallel, delayed
 
 from pybrary_of_babel.generate import (
     GeneratorConfig,
+    format_program,
     hex_to_program,
     random_hex,
 )
@@ -55,18 +56,22 @@ class Experiment:
                 )
 
                 if hex not in hex_program_map:
-                    hex_program_map[hex] = hex_to_program(
-                        hex,
-                        program_length=self.generator_config.program_length,  # type: ignore
-                        ascii_range=self.generator_config.ascii_range,  # type: ignore
-                        ascii_min=self.generator_config.ascii_min,
+                    hex_program_map[hex] = format_program(
+                        hex_to_program(
+                            hex,
+                            program_length=self.generator_config.program_length,  # type: ignore
+                            ascii_range=self.generator_config.ascii_range,  # type: ignore
+                            ascii_min=self.generator_config.ascii_min,
+                        ),
+                        total_lines=self.generator_config.total_lines,
+                        line_length=self.generator_config.line_length,
                     )
                     pbar.update()
 
         logger.info("Checking which programs run.")
 
-        def worker(hex: str, program: str) -> tuple[str, ExecutionResult]:
-            return hex, self.runner.run(program)
+        def worker(program: str) -> tuple[str, ExecutionResult]:
+            return program, self.runner.run(program)
 
         results = [
             r
@@ -76,17 +81,14 @@ class Experiment:
                     prefer="threads",
                     require="sharedmem",
                     return_as="generator",
-                )(
-                    delayed(worker)(hex, program)
-                    for hex, program in hex_program_map.items()
-                ),
+                )(delayed(worker)(program) for program in hex_program_map.values()),
                 total=len(hex_program_map),
             )
         ]
 
         print(self.generator_config.bytes_needed)
 
-        out = {hex: result for hex, result in results if result.success}
+        out = {program: result for program, result in results if result.success}
 
         logger.info(f"Got {len(out)} successful program runs.")
 

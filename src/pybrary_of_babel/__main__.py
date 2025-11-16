@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
@@ -29,11 +30,11 @@ def _write_results(results: Dict[str, ExecutionResult], output_dir: Path) -> Non
     jsonl_path = output_dir / "results.jsonl"
 
     with jsonl_path.open("w", encoding="utf-8") as fh:
-        for hex_key, res in results.items():
+        for program, res in results.items():
             fh.write(
                 json.dumps(
                     {
-                        "hex": hex_key,
+                        "program": program,
                         "returncode": res.returncode,
                         "stdout": res.stdout.decode(errors="replace"),
                         "stderr": res.stderr.decode(errors="replace"),
@@ -118,6 +119,17 @@ def run(
 
     logger.debug(f"ExperimentConfig = {experiment_cfg.model_dump()}")
     logger.debug(f"GeneratorConfig  = {generator_cfg.model_dump()}")
+
+    # Calculate total number of possible programs
+    program_length = line_length * total_lines
+    ascii_range = ascii_max - ascii_min + 1
+    # Use logarithms to avoid overflow with very large numbers
+    log10_total_programs = program_length * math.log10(ascii_range)
+    # Format in scientific notation without calculating the actual number
+    exponent = int(log10_total_programs)
+    fractional = log10_total_programs - exponent
+    mantissa = 10**fractional  # Safe: fractional is between 0 and 1
+    logger.info(f"Total possible programs: {mantissa:.2f}e{exponent:+d}")
 
     # Execute experiment
     runner = Runner()
