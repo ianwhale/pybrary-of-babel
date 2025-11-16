@@ -19,6 +19,11 @@ sudo apt-get install bubblewrap
 
 Finally, we also require `uv`. See [here](https://docs.astral.sh/uv/) for the `uv` docs.
 
+Then, fire up an experiment by checking out the CLI:
+
+```bash
+uv run pybrary-of-babel --help
+```
 
 ## See also
 
